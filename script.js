@@ -13,15 +13,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadBtn = document.getElementById('download-btn');
     const resetBtn = document.getElementById('reset-btn');
 
-    // Backend API URL (Ensure server.js is running on this port)
-    const BACKEND_API = 'http://localhost:3000/api/upsert';
+    // Backend API URL (Relative to domain)
+    const BACKEND_API = '/api/upsert';
 
-    // QR Code Image API (using public service)
+    // QR Code Image API
     const QR_SERVICE = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=';
 
-    /**
-     * Generate or Update Dynamic Link
-     */
     const handleGenerate = async () => {
         const slug = qrSlug.value.trim() || Math.random().toString(36).substring(7);
         const targetUrl = qrUrlInput.value.trim();
@@ -36,17 +33,22 @@ document.addEventListener('DOMContentLoaded', () => {
         generateBtn.innerText = 'Syncing...';
 
         try {
-            // 1. Save/Update mapping on the backend
             const response = await fetch(BACKEND_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ slug, url: targetUrl })
             });
 
+            // Log response for debugging
+            if (!response.ok) {
+                const text = await response.text();
+                console.error('Server responded with:', text);
+                throw new Error('API request failed');
+            }
+
             const data = await response.json();
 
             if (data.success) {
-                // 2. Generate QR for the SHORT LINK (which is static)
                 const shortLink = data.shortLink;
                 const qrImgUrl = `${QR_SERVICE}${encodeURIComponent(shortLink)}`;
 
@@ -54,7 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 displayShortLink.innerText = shortLink;
                 qrResult.classList.remove('hidden');
 
-                // If the user didn't provide a slug, show the auto-generated one
                 qrSlug.value = slug;
 
                 console.log('Static QR generated for:', shortLink);
@@ -65,16 +66,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Error:', error);
-            alert('Backend Not Found! \n\nTo use dynamic QR codes, you must run the backend server first:\n1. Open your terminal in this folder\n2. Run "npm install"\n3. Run "node server.js"');
+            alert('Backend connection failed. Please ensure the server is running on port 5003.');
         } finally {
             generateBtn.disabled = false;
             generateBtn.innerText = 'Save & Generate QR';
         }
     };
 
-    /**
-     * Download QR
-     */
     const downloadQR = async () => {
         const imageUrl = qrImage.src;
         if (!imageUrl) return;
@@ -85,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `qr-${qrSlug.value}.png`;
+            a.download = `qr-${qrSlug.value || 'download'}.png`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -95,22 +93,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    /**
-     * Reset
-     */
     const reset = () => {
         qrSlug.value = '';
         qrUrlInput.value = '';
         qrResult.classList.add('hidden');
     };
 
-    // Events
-    generateBtn.addEventListener('click', handleGenerate);
-    downloadBtn.addEventListener('click', downloadQR);
-    resetBtn.addEventListener('click', reset);
+    if (generateBtn) generateBtn.addEventListener('click', handleGenerate);
+    if (downloadBtn) downloadBtn.addEventListener('click', downloadQR);
+    if (resetBtn) resetBtn.addEventListener('click', reset);
 
-    // Enter key support
-    qrUrlInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleGenerate();
-    });
+    if (qrUrlInput) {
+        qrUrlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleGenerate();
+        });
+    }
 });
