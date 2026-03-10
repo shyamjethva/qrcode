@@ -9,15 +9,14 @@ app.use(cors());
 app.use(express.json());
 app.set('trust proxy', true);
 
-// Serve static files (HTML, CSS, JS) from the current directory
+// Serve frontend files
 app.use(express.static(__dirname));
 
-// In-memory store (temporary DB)
+// In-memory database
 const urlMappings = new Map();
 
 /**
- * API: Create or Update mapping
- * POST /api/upsert
+ * API: Upsert Link Mapping
  */
 app.post('/api/upsert', (req, res) => {
     const { slug, url } = req.body;
@@ -27,9 +26,9 @@ app.post('/api/upsert', (req, res) => {
     }
 
     urlMappings.set(slug, url);
-    console.log(`Mapping updated: ${slug} -> ${url}`);
+    console.log(`[API] Saved: ${slug} -> ${url}`);
 
-    // detect domain automatically
+    // Detect domain for short link
     const domain = req.protocol + '://' + req.get('host');
 
     res.json({
@@ -41,37 +40,36 @@ app.post('/api/upsert', (req, res) => {
 });
 
 /**
- * Redirect
- * GET /s/:slug
+ * Redirect Handler
  */
 app.get('/s/:slug', (req, res) => {
     const { slug } = req.params;
     const targetUrl = urlMappings.get(slug);
 
     if (targetUrl) {
-        console.log(`Redirecting ${slug} to ${targetUrl}`);
-        // Ensure URL has protocol
         let redirectUrl = targetUrl;
         if (!/^https?:\/\//i.test(redirectUrl)) {
             redirectUrl = 'https://' + redirectUrl;
         }
+        console.log(`[Redirect] ${slug} -> ${redirectUrl}`);
         return res.redirect(redirectUrl);
     }
 
     res.status(404).send(`
         <div style="font-family: sans-serif; text-align: center; padding: 50px;">
-            <h1>Link not found</h1>
-            <p>The requested QR code destination does not exist.</p>
-            <a href="/">Create a new one</a>
+            <h1>404 - Link Not Found</h1>
+            <p>The requested QR code destination does not exist or has expired.</p>
+            <a href="/" style="color: #4F46E5; text-decoration: none; font-weight: bold;">Create New QR Code</a>
         </div>
     `);
 });
 
-// For SPA routing - if someone goes to a route that's not /api or /s, send index.html
+// Single Page App routing
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
-    console.log(`QR Backend running at http://localhost:${PORT}`);
+    console.log(`Backend running at http://localhost:${PORT}`);
+    console.log(`API endpoint: http://localhost:${PORT}/api/upsert`);
 });
