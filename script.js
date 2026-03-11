@@ -2,7 +2,20 @@
  * QRGen Pro - Dynamic QR Code Client
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Auth Check
+    const checkAuth = async () => {
+        try {
+            const res = await fetch('/api/check-auth');
+            if (!res.ok) throw new Error('Not logged in');
+            const data = await res.json();
+            if (!data.authenticated) throw new Error('Not logged in');
+        } catch (error) {
+            window.location.href = '/login.html';
+        }
+    };
+    await checkAuth();
+
     const qrSlug = document.getElementById('qr-slug');
     const qrUrlInput = document.getElementById('qr-url');
     const generateBtn = document.getElementById('generate-btn');
@@ -18,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const editBtnText = document.getElementById('edit-btn-text');
     const editIcon = document.getElementById('edit-icon');
     const saveIcon = document.getElementById('save-icon');
+    const authLogoutBtn = document.getElementById('auth-logout-btn');
 
     // API Endpoint (Relative to current domain)
     const BACKEND_API = '/api/upsert';
@@ -265,6 +279,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (qrUrlInput) {
         qrUrlInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleGenerate();
+        });
+    }
+
+    if (authLogoutBtn) {
+        authLogoutBtn.addEventListener('click', async () => {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/login.html';
+            } catch (e) {
+                console.error(e);
+            }
         });
     }
 });
